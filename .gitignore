@@ -1,0 +1,4 @@
+*.pcap
+*.pcapng
+captures/
+.DS_Store
