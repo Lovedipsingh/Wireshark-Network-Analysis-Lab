@@ -88,27 +88,29 @@ sudo nmap -sV 192.168.56.102
 
 | Port | State | Service | Version | Risk |
 |---|---|---|---|---|
-| 21/tcp | open | FTP | vsftpd 2.3.4 | 🔴 CRITICAL — backdoor vulnerability |
+| 21/tcp | open | FTP | vsftpd 2.3.4 | 🔴 CRITICAL — historically associated with CVE-2011-2523 |
 | 22/tcp | open | SSH | OpenSSH 4.7p1 | 🟡 MEDIUM |
-| 23/tcp | open | Telnet | Linux telnetd | 🔴 HIGH — unencrypted |
+| 23/tcp | open | Telnet | Linux telnetd | 🔴 HIGH — unencrypted remote access |
 | 25/tcp | open | SMTP | Postfix smtpd | 🟡 MEDIUM |
-| 53/tcp | open | DNS | ISC BIND 9.4.2 | 🟡 MEDIUM |
-| 80/tcp | open | HTTP | Apache 2.2.8 | 🔴 HIGH — outdated |
-| 139/tcp | open | NetBIOS | Samba 3.X-4.X | 🔴 HIGH — vulnerable |
-| 445/tcp | open | SMB | Samba 3.X-4.X | 🔴 HIGH — vulnerable |
-| 512/tcp | open | exec | netkit-rsh rexecd | 🔴 CRITICAL |
-| 513/tcp | open | login | rlogind | 🔴 CRITICAL |
-| 514/tcp | open | shell | rshd | 🔴 CRITICAL |
-| 1099/tcp | open | Java-RMI | GNU Classpath | 🔴 HIGH |
-| 1524/tcp | open | bindshell | Metasploitable root shell | 🔴 CRITICAL — backdoor |
+| 53/tcp | open | DNS | ISC BIND 9.4.2 | 🟡 MEDIUM — outdated version |
+| 80/tcp | open | HTTP | Apache 2.2.8 | 🔴 HIGH — legacy web server version |
+| 139/tcp | open | NetBIOS | Samba 3.X-4.X | 🔴 HIGH — legacy service, may be vulnerable depending on version/configuration |
+| 445/tcp | open | SMB | Samba 3.X-4.X | 🔴 HIGH — legacy service, may be vulnerable depending on version/configuration |
+| 512/tcp | open | exec | netkit-rsh rexecd | 🔴 CRITICAL — plaintext remote access |
+| 513/tcp | open | login | rlogind | 🔴 CRITICAL — plaintext remote access |
+| 514/tcp | open | shell | rshd | 🔴 CRITICAL — plaintext remote access |
+| 1099/tcp | open | Java-RMI | GNU Classpath | 🔴 HIGH — exposed remote service, requires version-specific validation |
+| 1524/tcp | open | bindshell | Metasploitable root shell | 🔴 CRITICAL — intended unauthenticated root shell service |
 | 2049/tcp | open | NFS | 2-4 (RPC) | 🟡 MEDIUM |
-| 3306/tcp | open | MySQL | 5.0.51a | 🔴 HIGH — exposed |
-| 5432/tcp | open | PostgreSQL | 8.3.0-8.3.7 | 🟡 MEDIUM |
-| 5900/tcp | open | VNC | Protocol 3.3 | 🔴 HIGH — exposed |
+| 3306/tcp | open | MySQL | 5.0.51a | 🔴 HIGH — network-accessible database service |
+| 5432/tcp | open | PostgreSQL | 8.3.0-8.3.7 | 🔴 HIGH — network-accessible database service |
+| 5900/tcp | open | VNC | Protocol 3.3 | 🔴 HIGH — remote desktop service exposed to network |
 | 6000/tcp | open | X11 | access denied | 🟡 MEDIUM |
-| 6667/tcp | open | IRC | UnrealIRCd | 🔴 HIGH — unauthorized communication risk |
+| 6667/tcp | open | IRC | UnrealIRCd | 🔴 HIGH — legacy IRC service, historical backdoor risk depending on version |
 | 8009/tcp | open | AJP13 | Apache Jserv | 🟡 MEDIUM |
-| 8180/tcp | open | HTTP | Apache Tomcat | 🔴 HIGH |
+| 8180/tcp | open | HTTP | Apache Tomcat | 🔴 HIGH — exposed application service, requires version-specific validation |
+
+> **Note:** This service table rates individual exposed services. The formal report groups related issues into broader findings, which is why the executive summary reports **3 critical findings** rather than individual critical ports.
 
 ---
 
@@ -134,7 +136,7 @@ sudo nmap -sV 192.168.56.102
 | `tcp.flags.reset == 1` | Show TCP RST packets — closed port responses |
 | `arp` | ARP traffic — check for spoofing indicators |
 | `dns` | DNS queries — detect tunneling or suspicious domains |
-| `ip.addr == 192.168.56.102` | Filter all traffic to/from target |
+| `ip.addr == 192.168.56.102` | Filter target traffic when capturing on the host-only interface |
 
 #### Additional Observations
 - ICMPv6 multicast traffic observed as part of normal local network discovery behavior
@@ -146,25 +148,27 @@ sudo nmap -sV 192.168.56.102
 ## 🚨 Critical Findings
 
 ### Finding 1 — vsftpd 2.3.4 Backdoor (CVE-2011-2523)
-**Severity: CRITICAL**
-**Observed:** FTP service identified as vsftpd 2.3.4 on port 21.
-**Risk:** This version is historically associated with CVE-2011-2523 — a backdoor introduced when the vsftpd download server was compromised. Sending a smiley face character in the username triggers a root shell on port 6200.
+**Severity:** CRITICAL  
+**Observed:** FTP service identified as vsftpd 2.3.4 on port 21.  
+**Risk:** This version is historically associated with CVE-2011-2523 — a backdoor introduced when the vsftpd download server was compromised. Sending a smiley face character in the username triggers a root shell on port 6200.  
 **Validation status:** Version-based identification only — exploit was not executed in this lab.
 
 ### Finding 2 — Metasploitable Root Shell (Port 1524)
-**Severity: CRITICAL**
-Nmap identified port 1524 as the Metasploitable root shell backdoor service. In Metasploitable2, this service is intended to provide unauthenticated root shell access. Exploit validation was not performed in this lab.
+**Severity:** CRITICAL  
+**Observed:** Nmap identified port 1524 as the Metasploitable root shell service.  
+**Description:** In Metasploitable2, this service is intended to provide unauthenticated root shell access.  
+**Validation status:** Exploit validation was not performed in this lab.
 
 ### Finding 3 — Unencrypted Remote Access Protocols
-**Severity: CRITICAL**
+**Severity:** CRITICAL  
 Ports 512, 513, 514 (rexec, rlogin, rsh) transmit all data including credentials in plaintext. These protocols were deprecated decades ago and should never be exposed.
 
 ### Finding 4 — Network-Accessible Database Services
-**Severity: HIGH**
-MySQL (3306) and PostgreSQL (5432) were reachable from the scanning host. Exposing database services increases attack surface and may allow unauthorized access if weak credentials or legacy configurations exist. Database services should be restricted to trusted hosts only.
+**Severity:** HIGH  
+MySQL (3306) and PostgreSQL (5432) were reachable from the scanning host. These services should be restricted to trusted hosts or required application servers only.
 
 ### Finding 5 — Telnet Enabled (Port 23)
-**Severity: HIGH**
+**Severity:** HIGH  
 Telnet transmits all data including usernames and passwords in plaintext. Any network observer can capture credentials in Wireshark.
 
 ---
@@ -172,7 +176,7 @@ Telnet transmits all data including usernames and passwords in plaintext. Any ne
 ## 🛡️ Recommendations
 
 1. Immediately disable vsftpd 2.3.4 and upgrade to a patched version
-2. Remove bindshell on port 1524
+2. Remove or disable the root shell service on port 1524
 3. Disable rexec, rlogin, rsh — replace with SSH
 4. Disable Telnet — replace with SSH
 5. Restrict database ports 3306 and 5432 to trusted hosts or required application servers only
