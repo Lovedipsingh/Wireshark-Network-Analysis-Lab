@@ -5,14 +5,14 @@
 |---|---|
 | **Date** | March 22, 2026 |
 | **Analyst** | Lovedip Singh |
-| **Environment** | Isolated VirtualBox Lab |
+| **Environment** | VirtualBox lab with host-only target network and NAT connectivity for the Kali VM |
 | **Classification** | Educational — NOT Production |
 
 ---
 
 ## 1. Executive Summary
 
-A network traffic analysis was conducted against a deliberately vulnerable target (Metasploitable2) using Wireshark and Nmap from a Kali Linux attack platform. The analysis identified **21 open ports**, **5 most critical findings**, and captured **2,626 packets** of network traffic demonstrating common attack patterns in a controlled lab environment.
+A network traffic analysis was conducted against a deliberately vulnerable target (Metasploitable2) using Wireshark and Nmap from a Kali Linux attack platform. The assessment identified **21 open ports**, **3 critical findings**, **7 high-severity findings**, and captured **2,626 packets** of network traffic demonstrating common attack patterns in a controlled lab environment.
 
 **Overall Risk Rating: CRITICAL**
 
@@ -47,7 +47,7 @@ A network traffic analysis was conducted against a deliberately vulnerable targe
 
 ## 3. Methodology
 
-### 2.1 Network Discovery
+### 3.1 Network Discovery
 | Field | Details |
 |---|---|
 | Tool | Nmap 7.95 |
@@ -55,7 +55,7 @@ A network traffic analysis was conducted against a deliberately vulnerable targe
 | Purpose | Identify live hosts on the host-only lab network |
 | Result | Live hosts discovered including Metasploitable2 at 192.168.56.102 |
 
-### 2.2 Service Detection
+### 3.2 Service Detection
 | Field | Details |
 |---|---|
 | Tool | Nmap 7.95 |
@@ -63,7 +63,7 @@ A network traffic analysis was conducted against a deliberately vulnerable targe
 | Purpose | Identify open ports and service versions on the target |
 | Result | 21 open ports identified |
 
-### 2.3 Traffic Capture
+### 3.3 Traffic Capture
 | Field | Details |
 |---|---|
 | Tool | Wireshark 4.6 |
@@ -75,32 +75,28 @@ A network traffic analysis was conducted against a deliberately vulnerable targe
 
 ---
 
-## 3. Findings
+## 4. Findings
 
-### 3.1 Port Scan Detection
+### 4.1 Port Scan Detection
 
-During Nmap service enumeration, multiple TCP SYN probes were sent across Nmap's default top 1,000 TCP ports. The following behavior was observed:
-
-- Open ports responded with **SYN/ACK** packets confirming active services
-- Closed ports responded with **TCP RST** packets
-- DNS PTR reverse lookup queries were generated during service enumeration
+During Nmap service enumeration, scan-related TCP SYN activity was observed during the lab session. In standard TCP service detection, open ports typically respond with **SYN/ACK** packets while closed ports typically respond with **TCP RST** packets. DNS PTR reverse lookup queries were also generated during enumeration.
 
 This is a common port-scan pattern that many IDS/IPS rulesets are designed to detect and alert on.
 
-### 3.2 Critical Services Identified
+### 4.2 Critical Services Identified
 
 #### vsftpd 2.3.4 (CVE-2011-2523)
 - **Port:** 21/tcp
 - **Risk:** CRITICAL
 - **Observed:** FTP service identified as vsftpd 2.3.4 on port 21
-- **Risk:** This version is historically associated with CVE-2011-2523 — a backdoor introduced when the vsftpd download server was compromised. Sending a smiley face character in the username triggers a root shell on port 6200.
+- **Description:** This version is historically associated with CVE-2011-2523 — a backdoor introduced when the vsftpd download server was compromised. Sending a smiley face character in the username triggers a root shell on port 6200.
 - **Validation status:** Version-based identification only — exploit was not executed in this lab.
 
 #### Metasploitable Root Shell
 - **Port:** 1524/tcp
 - **Risk:** CRITICAL
 - **Observed:** Nmap identified port 1524 as the Metasploitable root shell service.
-- **Risk:** In Metasploitable2, this service is intended to provide unauthenticated root shell access.
+- **Description:** In Metasploitable2, this service is intended to provide unauthenticated root shell access.
 - **Validation status:** Exploit validation was not performed in this lab.
 
 #### Unencrypted Remote Shell Protocols
@@ -120,27 +116,27 @@ This is a common port-scan pattern that many IDS/IPS rulesets are designed to de
 
 ---
 
-## 4. Wireshark Analysis
+## 5. Wireshark Analysis
 
 > Wireshark captures in this lab were collected on the NAT-facing interface and are presented as supplementary packet-analysis context. Target-host exposure findings are supported primarily by Nmap scan results.
 
-### 4.1 ARP Traffic
+### 5.1 ARP Traffic
 - ARP request/reply activity observed on the local VM network
 - No ARP spoofing detected — MAC addresses remained consistent throughout the session
 
-### 4.2 DNS Traffic
+### 5.2 DNS Traffic
 - Multiple PTR (reverse DNS) lookups observed during Nmap service enumeration
-- The target's DNS service was identified through service enumeration as BIND 9.4.2 — an outdated version
+- Service enumeration separately identified the target's DNS service as BIND 9.4.2, an outdated version
 - No evidence of DNS tunneling identified in the packet capture
 
-### 4.3 TCP SYN Pattern
+### 5.3 TCP SYN Pattern
 - Multiple TCP SYN probes observed across destination ports during service enumeration
 - Pattern is consistent with standard Nmap service detection behavior
 - This is a common port-scan signature that IDS/IPS systems are designed to detect
 
 ---
 
-## 5. Risk Summary
+## 6. Risk Summary
 
 | Finding | Severity | CVE | Remediation |
 |---|---|---|---|
@@ -152,12 +148,12 @@ This is a common port-scan pattern that many IDS/IPS rulesets are designed to de
 | PostgreSQL exposed | HIGH | N/A | Restrict to trusted hosts |
 | Telnet enabled | HIGH | N/A | Disable — use SSH |
 | Apache 2.2.8 | HIGH | Multiple | Upgrade |
-| UnrealIRCd | HIGH | CVE-2010-2075 | Remove |
+| UnrealIRCd | HIGH | CVE-2010-2075 | Remove or upgrade |
 | VNC exposed | HIGH | N/A | Restrict access |
 
 ---
 
-## 6. Limitations
+## 7. Limitations
 
 | Limitation | Impact |
 |---|---|
@@ -168,9 +164,9 @@ This is a common port-scan pattern that many IDS/IPS rulesets are designed to de
 
 ---
 
-## 7. Conclusion
+## 8. Conclusion
 
-The target system (Metasploitable2) demonstrates numerous security vulnerabilities that would allow an attacker to gain complete root access through multiple attack vectors in a real environment. This analysis demonstrates the importance of:
+The target system (Metasploitable2) demonstrates numerous legacy and insecure services that are historically associated with severe compromise risk, including potential unauthenticated root access and plaintext credential exposure. In a real environment, systems with similar weaknesses would represent a critical security risk and require immediate remediation. This analysis demonstrates the importance of:
 
 1. Regular vulnerability scanning and patch management
 2. Network traffic monitoring with tools like Wireshark
