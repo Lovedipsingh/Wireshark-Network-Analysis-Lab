@@ -24,8 +24,8 @@
 - **vsftpd 2.3.4** — Historically associated with **CVE-2011-2523** and remote backdoor risk
 - **Port 1524 root shell service** — Intended unauthenticated root shell exposure in Metasploitable2
 - **Legacy remote shell protocols** — `rexec`, `rlogin`, and `rsh` transmit credentials in plaintext
-- **UnrealIRCd service** — Legacy IRC service with known historical backdoor risk depending on version
 - **Network-accessible MySQL and PostgreSQL services** — Reachable from the scanning host
+- **Telnet enabled (port 23)** — Credentials transmitted in plaintext over the network
 
 ---
 
