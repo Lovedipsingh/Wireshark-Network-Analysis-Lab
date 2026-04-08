@@ -4,9 +4,9 @@
 ![Kali Linux](https://img.shields.io/badge/Kali_Linux-2025-red?style=flat-square&logo=kalilinux)
 ![Nmap](https://img.shields.io/badge/Nmap-7.95-green?style=flat-square)
 ![Security](https://img.shields.io/badge/Security-SOC%20Lab-orange?style=flat-square)
-![License](https://img.shields.io/badge/License-MIT-green?style=flat-square)
+![Blue Team](https://img.shields.io/badge/Blue_Team-Defensive-blue?style=flat-square)
 
-A hands-on network traffic analysis lab using Wireshark and Nmap against a deliberately vulnerable target (Metasploitable2) in an isolated VirtualBox environment. Demonstrates real SOC analyst workflows: port scan detection, service enumeration, vulnerability identification, and structured security reporting.
+> Hands-on network traffic analysis lab using Wireshark and Nmap against a deliberately vulnerable target (Metasploitable2) in an isolated VirtualBox environment. Demonstrates real SOC analyst workflows: port scan detection, service enumeration, vulnerability identification, and structured security reporting.
 
 ---
 
@@ -23,13 +23,19 @@ A hands-on network traffic analysis lab using Wireshark and Nmap against a delib
 
 ---
 
-## 🎯 Objectives
+## 📋 Executive Summary
 
-- Capture and analyze real network traffic using Wireshark in a lab environment
-- Perform service version detection with Nmap against a vulnerable target
-- Identify exposed services and map them to known vulnerabilities
-- Detect port scan patterns at the packet level
-- Document findings in a structured security report with risk ratings and remediation recommendations
+Network traffic analysis against Metasploitable2 identified **21 open ports**, **3 critical findings**, and **7 high-severity findings** across 2,626 captured packets. Critical findings include a known backdoored FTP binary (CVE-2011-2523), an unauthenticated root shell service, and multiple legacy plaintext remote access protocols exposing credentials to any network observer.
+
+| Metric | Value |
+|---|---|
+| Total Packets Captured | 2,626 |
+| Open Ports Discovered | 21 |
+| Critical Findings | 3 |
+| High Severity Findings | 7 |
+| Overall Risk Rating | 🔴 CRITICAL |
+
+![Nmap Scan Results](screenshots/nmap-scan-results.webp)
 
 ---
 
@@ -48,25 +54,11 @@ A hands-on network traffic analysis lab using Wireshark and Nmap against a delib
 
 ---
 
-## 📋 Lab Exercises
-
-### Exercise 1 — Network Discovery
-
-```bash
-sudo nmap -sn 192.168.56.0/24
-```
-
-Identified live hosts on the host-only network including Metasploitable2 at `192.168.56.102`.
-
----
-
-### Exercise 2 — Service Version Detection
+## 🔬 Service Enumeration Results
 
 ```bash
 sudo nmap -sV 192.168.56.102
 ```
-
-**Open Ports and Services Discovered:**
 
 | Port | Service | Version | Risk |
 |---|---|---|---|
@@ -94,9 +86,11 @@ sudo nmap -sV 192.168.56.102
 
 ---
 
-### Exercise 3 — Wireshark Traffic Analysis
+## 📡 Wireshark Analysis
 
-#### Wireshark Filters Applied
+![Wireshark ARP DNS Capture](screenshots/wireshark-arp-dns.webp)
+
+### Filters Applied
 
 | Filter | Purpose |
 |---|---|
@@ -106,10 +100,10 @@ sudo nmap -sV 192.168.56.102
 | `dns` | DNS queries — detect tunneling or suspicious lookups |
 | `ip.addr == 192.168.56.102` | Filter target-specific traffic |
 
-#### Observations
+### Observations
 - TCP SYN packets to sequential destination ports confirmed classic Nmap scan signature in packet capture
-- SYN/ACK responses visible on open ports; TCP RST responses on closed ports — consistent with expected scan behavior
-- ARP request/reply activity observed; MAC-to-IP mappings remained consistent throughout — no spoofing detected
+- SYN/ACK responses visible on open ports; TCP RST on closed ports — consistent with expected scan behavior
+- ARP request/reply activity observed — MAC-to-IP mappings remained consistent, no spoofing detected
 - DNS PTR lookups generated during Nmap service enumeration — normal scan behavior
 - ICMPv6 multicast traffic observed as standard local network discovery behavior
 
@@ -117,44 +111,48 @@ sudo nmap -sV 192.168.56.102
 
 ## 🚨 Critical Findings
 
-### Finding 1 — vsftpd 2.3.4 (CVE-2011-2523)
-**Severity:** CRITICAL  
-**Port:** 21/tcp  
-**Detail:** vsftpd 2.3.4 is the version distributed after the official vsftpd download server was compromised in 2011. The attacker injected a backdoor that triggers an unauthenticated root shell on port 6200 when a smiley face string is sent in the FTP username field. This is a supply-chain compromise baked into the binary itself, not a misconfiguration.  
-**Validation:** Version-based identification only — exploitation not performed in this lab.  
-**Remediation:** Remove vsftpd 2.3.4 immediately. Replace with a current patched version or disable FTP entirely and use SFTP over SSH.
+### Finding 1 — vsftpd 2.3.4 Backdoor (CVE-2011-2523)
+**Severity:** 🔴 CRITICAL | **Port:** 21/tcp
+
+vsftpd 2.3.4 was distributed after the official vsftpd download server was compromised in 2011. An attacker injected a backdoor that triggers an unauthenticated root shell on port 6200 when a smiley face string is sent in the FTP username. This is a supply-chain compromise baked into the binary — not a misconfiguration.
+
+**Remediation:** Remove vsftpd 2.3.4 immediately. Replace with a current patched version or disable FTP and use SFTP over SSH.
 
 ---
 
 ### Finding 2 — Unauthenticated Root Shell (Port 1524)
-**Severity:** CRITICAL  
-**Port:** 1524/tcp  
-**Detail:** Metasploitable2 intentionally exposes a bindshell providing unauthenticated root access. Any host that can reach this port has immediate full system access.  
-**Validation:** Version-based identification only — exploitation not performed in this lab.  
+**Severity:** 🔴 CRITICAL | **Port:** 1524/tcp
+
+Metasploitable2 intentionally exposes a bindshell providing unauthenticated root access. Any host that can reach this port has immediate full system access with no credentials required.
+
 **Remediation:** Disable immediately. This service has no legitimate production use case.
 
 ---
 
 ### Finding 3 — Legacy Plaintext Remote Access Protocols
-**Severity:** CRITICAL  
-**Ports:** 512 (rexec), 513 (rlogin), 514 (rsh)  
-**Detail:** These protocols transmit all data — including credentials — in cleartext. Any network observer with Wireshark can capture usernames and passwords in real time. These protocols were deprecated in favor of SSH in the 1990s.  
-**Remediation:** Disable rexec, rlogin, and rsh entirely. Enforce SSH for all remote access.
+**Severity:** 🔴 CRITICAL | **Ports:** 512, 513, 514
+
+rexec, rlogin, and rsh transmit all data — including credentials — in cleartext. Any network observer with Wireshark can capture usernames and passwords in real time. These protocols were deprecated in favor of SSH in the 1990s.
+
+**Remediation:** Disable all three. Enforce SSH for all remote access.
 
 ---
 
-### Finding 4 — Telnet Enabled (Port 23)
-**Severity:** HIGH  
-**Detail:** Telnet transmits all session data including credentials in plaintext. Demonstrable with a single Wireshark capture — credentials appear in clear text in TCP stream.  
+### Finding 4 — Telnet Enabled
+**Severity:** 🔴 HIGH | **Port:** 23/tcp
+
+Telnet transmits all session data including credentials in plaintext. Credentials are visible in a single Wireshark TCP stream follow.
+
 **Remediation:** Disable Telnet. Replace with SSH.
 
 ---
 
 ### Finding 5 — Network-Accessible Database Services
-**Severity:** HIGH  
-**Ports:** 3306 (MySQL), 5432 (PostgreSQL)  
-**Detail:** Both database services are reachable from the scanning host with no apparent network-level restriction. Database services should never be exposed beyond the application tier.  
-**Remediation:** Bind both services to localhost (127.0.0.1) or restrict access via firewall rules to trusted application servers only.
+**Severity:** 🔴 HIGH | **Ports:** 3306, 5432
+
+MySQL and PostgreSQL are reachable from the scanning host with no apparent network-level restriction. Database services should never be exposed beyond the application tier.
+
+**Remediation:** Bind both services to localhost (127.0.0.1) or restrict via firewall to trusted application servers only.
 
 ---
 
@@ -184,31 +182,27 @@ sudo nmap -sV 192.168.56.102
 
 ---
 
+## 🏅 Skills Demonstrated
+
+- Network packet capture and analysis with Wireshark
+- Service enumeration and vulnerability identification with Nmap
+- CVE research and risk rating
+- MITRE ATT&CK mapping
+- Structured security reporting with remediation recommendations
+
+---
+
 ## 📁 Repository Structure
 
 ```
 Wireshark-Network-Analysis-Lab/
-├── README.md                           # Full lab documentation
-├── analysis-report.md                  # Detailed technical findings
-├── findings-summary.md                 # Executive summary
+├── README.md
 ├── screenshots/
-│   ├── nmap-scan-results.webp          # Nmap service enumeration output
-│   ├── nmap-wireshark-sidebyside.webp  # Side-by-side lab workflow view
-│   └── wireshark-arp-dns.webp          # ARP and DNS traffic capture
+│   ├── nmap-scan-results.webp
+│   ├── nmap-wireshark-sidebyside.webp
+│   └── wireshark-arp-dns.webp
 └── .gitignore
 ```
-
----
-
-## 🛠️ Tools Used
-
-| Tool | Version | Purpose |
-|---|---|---|
-| Wireshark | 4.6 | Packet capture and protocol analysis |
-| Nmap | 7.95 | Network discovery and service version detection |
-| Kali Linux | 2025 | Attack platform |
-| Metasploitable2 | — | Intentionally vulnerable target |
-| VirtualBox | — | Isolated lab environment |
 
 ---
 
@@ -218,5 +212,5 @@ This lab was conducted in an **isolated VirtualBox environment** against a **del
 
 ---
 
-*Built by [Lovedip Singh](https://github.com/Lovedipsingh) — SOC analyst portfolio project.*  
+*Built by [Lovedip Singh](https://github.com/Lovedipsingh) — SOC Analyst portfolio project.*
 *[LinkedIn](https://linkedin.com/in/lovedip-singh-76802a1a3) | [GitHub](https://github.com/Lovedipsingh)*
